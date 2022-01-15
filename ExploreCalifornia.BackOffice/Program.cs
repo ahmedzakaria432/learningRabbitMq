@@ -1,25 +1,30 @@
 ﻿// See https://aka.ms/new-console-template for more information
+#region Usings
+
 using Newtonsoft.Json;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
-Console.WriteLine("Hello, World!");
-var factory = new ConnectionFactory() { Uri=new Uri("amqp://guest:guest@localhost:5672")};
-var connection=factory.CreateConnection();
-var channel = connection.CreateModel();
 
-channel.QueueDeclare("backOfficeQueue", true, false,false);
+#endregion
+
+#region Main
+
+Console.WriteLine("Hello, World!");
+(var connection, var channel) = prepareForConnecting();
+
+channel.QueueDeclare("backOfficeQueue", true, false, false);
 channel.QueueBind("backOfficeQueue", "webappExchange", "", new Dictionary<string, object>()
             {
                 { "subject","tour"},
-                
+
                 { "x-match","any"}
             });
 var consumer = new EventingBasicConsumer(channel);
 
 consumer.Received += (sender, args) =>
 {
-    string message=System.Text.Encoding.UTF8.GetString(args.Body.ToArray());
-    var content= JsonConvert.DeserializeObject<Obj>(message);
+    string message = System.Text.Encoding.UTF8.GetString(args.Body.ToArray());
+    var content = JsonConvert.DeserializeObject<Obj>(message);
     var subject = System.Text.Encoding.UTF8.GetString((byte[])args.BasicProperties.Headers[key: "subject"]);
     var action = System.Text.Encoding.UTF8.GetString((byte[])args.BasicProperties.Headers[key: "action"]);
 
@@ -29,9 +34,11 @@ channel.BasicConsume("backOfficeQueue", true, consumer);
 
 Console.ReadLine();
 exit(connection, channel);
+#endregion
 
 
 
+#region Utilities
 
 void exit(IConnection connection, IModel channel)
 {
@@ -41,7 +48,7 @@ void exit(IConnection connection, IModel channel)
     channel.Dispose();
 }
 
-void print(Obj obj,string additionalInfo)
+void print(Obj obj, string additionalInfo)
 {
     Console.WriteLine(additionalInfo);
     if (obj is not null)
@@ -52,6 +59,17 @@ void print(Obj obj,string additionalInfo)
     Console.WriteLine(" failed to deserialize content");
 
 }
+(IConnection, IModel) prepareForConnecting()
+{
+    var factory = new ConnectionFactory() { Uri = new Uri("amqp://guest:guest@localhost:5672") };
+    var connection = factory.CreateConnection();
+    var channel = connection.CreateModel();
+    return (connection, channel);
+}
+#endregion
+
+#region classes
+
 public class Obj
 {
     public string? tourname { get; set; }
@@ -66,3 +84,4 @@ public class Obj
     }
 
 }
+#endregion

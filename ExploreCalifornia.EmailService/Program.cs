@@ -1,17 +1,18 @@
 ﻿// See https://aka.ms/new-console-template for more information
+#region Usings
+
 using Newtonsoft.Json;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+#endregion
+
+#region Main
 
 Console.WriteLine("Hello, World!");
 
-var factory = new ConnectionFactory() { HostName = "localhost", Uri = new Uri("amqp://guest:guest@localhost:5672") };
+(var connection, var channel) = prepareForConnecting();
 
-var connection = factory.CreateConnection();
-
-var channel = connection.CreateModel();
-    
-        channel.QueueDeclare("EmailSeviceQueue",true,false,false);
+channel.QueueDeclare("EmailSeviceQueue",true,false,false);
         channel.QueueBind("EmailSeviceQueue", "webappExchange", "", new Dictionary<string, object>()
             {
                 { "subject","tour"},
@@ -34,10 +35,12 @@ var channel = connection.CreateModel();
     
     Console.ReadLine();
     exit(connection, channel);
+#endregion
 
 
+#region Utilities
 
- void exit( IConnection connection, IModel channel) {
+void exit( IConnection connection, IModel channel) {
     connection.Close();
     channel.Close();
     connection.Dispose();
@@ -54,6 +57,18 @@ void print(Obj obj )
         Console.WriteLine(" failed to deserialize content");
     
 }
+
+(IConnection, IModel) prepareForConnecting()
+{
+    var factory = new ConnectionFactory() { Uri = new Uri("amqp://guest:guest@localhost:5672") };
+    var connection = factory.CreateConnection();
+    var channel = connection.CreateModel();
+    return (connection, channel);
+}
+#endregion
+
+#region Classes
+
 public class Obj 
 {
     public string? tourname { get; set; }
@@ -68,3 +83,4 @@ public class Obj
     }
 
 }
+#endregion

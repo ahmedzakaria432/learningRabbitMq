@@ -1,11 +1,17 @@
 ﻿// See https://aka.ms/new-console-template for more information
+#region Usings
+
+
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+#endregion
+
+
+#region Main
 
 Console.WriteLine("Hello, World!");
-var factory = new ConnectionFactory() { Uri = new Uri("amqp://guest:guest@localhost:5672") };
-var connection = factory.CreateConnection();
-var channel = connection.CreateModel();
+(var connection, var channel) = prepareForConnecting();
+
 channel.ExchangeDeclare("chatApp", ExchangeType.Direct, true);
 var queueName = $"queue{ new Random().Next()}";
 channel.QueueDeclare(queueName, true, false);
@@ -31,3 +37,24 @@ while (!string.IsNullOrEmpty(message))
 
     channel.BasicPublish("chatApp", roomName, null, System.Text.Encoding.UTF8.GetBytes(message));
 }
+exit(connection, channel);
+
+#endregion
+
+#region Utilities
+
+(IConnection,IModel) prepareForConnecting() 
+{
+     var factory = new ConnectionFactory() { Uri = new Uri("amqp://guest:guest@localhost:5672") };
+    var connection = factory.CreateConnection();
+    var channel = connection.CreateModel();
+    return (connection, channel);
+}
+void exit(IConnection connection, IModel channel)
+{
+    connection.Close();
+    channel.Close();
+    connection.Dispose();
+    channel.Dispose();
+}
+#endregion
