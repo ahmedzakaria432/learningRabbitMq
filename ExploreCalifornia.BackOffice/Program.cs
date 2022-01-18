@@ -12,7 +12,12 @@ using RabbitMQ.Client.Events;
 Console.WriteLine("Hello, World!");
 (var connection, var channel) = prepareForConnecting();
 
-channel.QueueDeclare("backOfficeQueue", true, false, false);
+//this to tell queue to send rejected message to dlx exhange (queue that we have defined to receive dead letterrd messages )
+var dict = new Dictionary<string, object>
+{
+    { "x-dead-letter-exchange", "DLX" }
+};
+channel.QueueDeclare("backOfficeQueue", true, false, false,dict);
 channel.QueueBind("backOfficeQueue", "webappExchange", "", new Dictionary<string, object>()
             {
                 { "subject","tour"},
@@ -29,6 +34,7 @@ consumer.Received += (sender, args) =>
     var action = System.Text.Encoding.UTF8.GetString((byte[])args.BasicProperties.Headers[key: "action"]);
 
     print(obj: content, $"subject: {subject} \n action: {action}");
+    channel.BasicReject(args.DeliveryTag, false);
 };
 channel.BasicConsume("backOfficeQueue", true, consumer);
 
